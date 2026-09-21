@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Music Organizer</title>
+<style>
+:root{--bg:#f5f6f8;--card:#fff;--text:#17181c;--muted:#737780;--line:#e3e5e9;--accent:#111827;--red:#ef4444;--orange:#f59e0b;--green:#22c55e}
+*{box-sizing:border-box} body{margin:0;background:var(--bg);font-family:Inter,system-ui,-apple-system,Segoe UI,Arial,sans-serif;color:var(--text)}
+.app{max-width:1050px;margin:0 auto;padding:28px 18px 60px}.top{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:20px}
+h1{margin:0;font-size:28px}.sub{color:var(--muted);font-size:14px;margin-top:4px}
+button{border:0;border-radius:10px;padding:10px 14px;font-weight:650;cursor:pointer;background:#111827;color:#fff}
+button.secondary{background:#e9ebef;color:#202228}.hidden{display:none!important}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,.035)}
+.search{display:flex;gap:10px}.search input{flex:1;font-size:17px;padding:13px 14px;border:1px solid var(--line);border-radius:11px;outline:none}.search input:focus{border-color:#9ca3af}
+.status{font-size:13px;color:var(--muted);margin:10px 0}.results{display:grid;gap:8px;max-height:360px;overflow:auto}
+.result{padding:12px;border:1px solid var(--line);border-radius:11px;cursor:pointer;display:flex;justify-content:space-between;gap:15px}.result:hover{background:#fafafa}.result .song{font-weight:700}.result .artist{font-size:13px;color:var(--muted);margin-top:2px}.badge{font-size:12px;white-space:nowrap;color:#166534;background:#dcfce7;padding:5px 8px;border-radius:999px;height:max-content}.badge.new{color:#92400e;background:#fef3c7}
+.selected{display:flex;justify-content:space-between;align-items:start;gap:15px}.selected h2{margin:0;font-size:22px}.selected p{margin:5px 0;color:var(--muted)}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.field label{display:block;font-size:12px;font-weight:700;color:#666b73;margin-bottom:6px}.field select{width:100%;padding:11px;border:1px solid var(--line);border-radius:10px;background:#fff}
+.playlists{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.pl{border:1px solid var(--line);border-radius:12px;padding:12px}.pl-name{font-weight:700;font-size:13px;margin-bottom:9px;min-height:32px}.lights{display:flex;gap:10px;align-items:center}.light{width:27px;height:27px;border-radius:50%;border:2px solid #d5d8dd;background:#fff;padding:0}.light.red{border-color:var(--red)}.light.orange{border-color:var(--orange)}.light.green{border-color:var(--green)}.light.selected.red{background:var(--red);border-color:var(--red);box-shadow:0 0 0 3px rgba(239,68,68,.18)}.light.selected.orange{background:var(--orange);border-color:var(--orange);box-shadow:0 0 0 3px rgba(245,158,11,.18)}.light.selected.green{background:var(--green);border-color:var(--green);box-shadow:0 0 0 3px rgba(34,197,94,.18)}.clear{font-size:12px;background:#f0f1f3;color:#555;padding:6px 8px;border-radius:8px}
+.actions{display:flex;justify-content:flex-end;gap:10px;margin-top:16px}.save{padding:13px 20px}.message{margin-top:10px;font-size:13px}.ok{color:#166534}.err{color:#b91c1c}
+.login{max-width:520px;margin:70px auto;text-align:center}.login p{color:var(--muted);line-height:1.5}
+.config{font-size:12px;color:var(--muted);line-height:1.5}.pill{display:inline-block;background:#eef2ff;color:#3730a3;border-radius:999px;padding:4px 8px;margin:2px}
+@media(max-width:760px){.grid{grid-template-columns:1fr}.playlists{grid-template-columns:repeat(2,1fr)}.top{align-items:flex-start}.selected{display:block}.search{flex-direction:column}.app{padding:18px 12px 40px}}
+</style>
+</head>
+<body>
+<div id="login" class="login card">
+  <h1>Music Organizer</h1>
+  <p>Sign in with your Microsoft account to work directly with <b>OneDrive → Music → Playlists.xlsx</b>.</p>
+  <button id="loginBtn">Sign in with Microsoft</button>
+  <div id="loginMsg" class="message"></div>
+</div>
+
+<div id="app" class="app hidden">
+  <div class="top">
+    <div><h1>Music Organizer</h1><div class="sub" id="accountText"></div></div>
+    <div style="display:flex;gap:8px"><button class="secondary" id="reloadBtn">Reload Excel</button><button class="secondary" id="logoutBtn">Sign out</button></div>
+  </div>
+
+  <div class="card">
+    <div class="search">
+      <input id="searchInput" placeholder="Search song, artist, or album..." autocomplete="off">
+      <button id="searchBtn">Search</button>
+    </div>
+    <div class="status" id="dataStatus">Loading workbook...</div>
+    <div class="results" id="results"></div>
+  </div>
+
+  <div id="editor" class="card hidden">
+    <div class="selected">
+      <div><h2 id="songTitle"></h2><p id="songArtist"></p><p id="songAlbum"></p></div>
+      <span id="classifiedBadge" class="badge hidden">✓ Already Classified</span>
+    </div>
+
+    <hr style="border:0;border-top:1px solid var(--line);margin:16px 0">
+    <div class="grid">
+      <div class="field"><label>Genre</label><input id="genreInput" style="width:100%;padding:11px;border:1px solid var(--line);border-radius:10px"></div>
+      <div class="field"><label>Energy</label><select id="energy"></select></div>
+      <div class="field"><label>Mood</label><select id="mood"></select></div>
+      <div class="field"><label>Setting</label><select id="setting"></select></div>
+      <div class="field"><label>Sleep</label><select id="sleep"><option value=""></option><option>Yes</option><option>No</option></select></div>
+    </div>
+
+    <h3 style="margin:22px 0 10px">Playlists</h3>
+    <div class="sub" style="margin-bottom:12px">Red = probably not, Orange = maybe, Green = yes</div>
+    <div class="playlists" id="playlists"></div>
+
+    <div class="actions"><button class="secondary" id="cancelBtn">Cancel</button><button class="save" id="saveBtn">Save Song</button></div>
+    <div class="message" id="saveMsg"></div>
+  </div>
+</div>
+
+<script type="module">
+import { PublicClientApplication } from "https://cdn.jsdelivr.net/npm/@azure/msal-browser@5.22.0/+esm";
+
+const CONFIG = {
+  clientId: "e99cf8f0-7965-4231-aa49-513ace3b5893",
+  authority: "https://login.microsoftonline.com/consumers",
+  workbookPath: "Music/Playlists.xlsx",
+  scopes: ["Files.ReadWrite"]
+};
+
+const FIXED = new Set(["Track Name","Album Name","Artist Name(s)","Genres","Energy","Mood","Setting","Sleep"]);
+const DEFAULT_OPTIONS = {
+  Energy:["","Very Low","Low","Medium","High","Very High"],
+  Mood:["","Chill","Happy","Sad","Dark","Romantic","Dreamy","Hype","Melancholic","Confident"],
+  Setting:["","Driving","Gym","Party","Studying","Late Night","Background","Social","Alone"]
+};
+const COLORS = {Red:"#ef4444", Orange:"#f59e0b", Green:"#22c55e"};
+let msalApp, account, token, sheetName, rows=[], headers=[], selectedIndex=null, playlistHeaders=[];
+
+const $=id=>document.getElementById(id);
+function msg(el,text,cls=""){el.textContent=text;el.className="message "+cls}
+function escapePath(path){return path.split("/").map(encodeURIComponent).join("/")}
+async function getToken(){
+  const request={scopes:CONFIG.scopes};
+  try{
+    const r=await msalApp.acquireTokenSilent({...request,account});
+    token=r.accessToken; return token;
+  }catch(e){
+    const r=await msalApp.acquireTokenPopup(request);
+    token=r.accessToken; return token;
+  }
+}
+async function graph(path, options={}){
+  const t=await getToken();
+  const r=await fetch("https://graph.microsoft.com/v1.0"+path,{...options,headers:{"Authorization":"Bearer "+t,"Content-Type":"application/json",...(options.headers||{})}});
+  if(!r.ok){let body="";try{body=await r.text()}catch{};throw new Error(r.status+" "+body)}
+  return r.status===204?null:r.json();
+}
+function colLetter(n){let s="";while(n>0){let m=(n-1)%26;s=String.fromCharCode(65+m)+s;n=Math.floor((n-1)/26)}return s}
+function cellAddress(rowIndex,colIndex){return colLetter(colIndex+1)+(rowIndex+1)}
+function addOptions(select, values){
+  const current=select.value;
+  select.innerHTML="";
+  const uniq=[...new Set(values.map(v=>String(v??"")).filter(v=>v!==""))];
+  select.appendChild(new Option("",""));
+  uniq.forEach(v=>select.appendChild(new Option(v,v)));
+  select.value=current;
+}
+function buildOptions(){
+  ["Energy","Mood","Setting"].forEach(name=>{
+    const idx=headers.indexOf(name);
+    const existing=idx>=0?rows.slice(1).map(r=>r[idx]).filter(v=>v!=null&&String(v).trim()!==""):[];
+    addOptions($(name.toLowerCase()), [...DEFAULT_OPTIONS[name],...existing]);
+  });
+}
+function isClassified(row){
+  return ["Genres","Energy","Mood","Setting","Sleep",...playlistHeaders].some(h=>{
+    const i=headers.indexOf(h); return i>=0 && row[i]!==null && String(row[i]).trim()!=="";
+  });
+}
+async function loadWorkbook(){
+  $("dataStatus").textContent="Loading workbook...";
+  const base="/me/drive/root:/"+escapePath(CONFIG.workbookPath)+":/workbook";
+  const sheets=await graph(base+"/worksheets");
+  if(!sheets.value?.length) throw new Error("No worksheet found.");
+  sheetName=sheets.value[0].name;
+  const range=await graph(base+"/worksheets/"+encodeURIComponent(sheetName)+"/usedRange(valuesOnly=true)");
+  rows=range.values||[];
+  headers=(rows[0]||[]).map(v=>String(v??""));
+  playlistHeaders=headers.filter(h=>h && !FIXED.has(h));
+  buildOptions();
+  renderPlaylistControls();
+  $("dataStatus").textContent=`Loaded ${Math.max(0,rows.length-1).toLocaleString()} songs from ${sheetName}.`;
+}
+function renderPlaylistControls(){
+  const box=$("playlists");box.innerHTML="";
+  playlistHeaders.forEach(name=>{
+    const wrap=document.createElement("div");wrap.className="pl";
+    const title=document.createElement("div");title.className="pl-name";title.textContent=name;
+    const lights=document.createElement("div");lights.className="lights";
+    ["Red","Orange","Green"].forEach(color=>{
+      const b=document.createElement("button");b.className="light "+color.toLowerCase();b.dataset.color=color;b.title=color;
+      b.addEventListener("click",()=>{lights.querySelectorAll(".light").forEach(x=>x.classList.remove("selected"));b.classList.add("selected")});
+      lights.appendChild(b);
+    });
+    const clear=document.createElement("button");clear.className="clear";clear.textContent="Clear";clear.addEventListener("click",()=>lights.querySelectorAll(".light").forEach(x=>x.classList.remove("selected")));
+    lights.appendChild(clear);wrap.append(title,lights);box.appendChild(wrap);
+  });
+}
+function search(){
+  const q=$("searchInput").value.trim().toLowerCase();
+  const results=$("results");results.innerHTML="";
+  if(!q){$("dataStatus").textContent=`Loaded ${rows.length-1} songs. Type a search.`;return}
+  const matches=[];
+  for(let i=1;i<rows.length;i++){
+    const r=rows[i]||[];
+    const text=[r[0],r[1],r[2],r[3]].map(v=>String(v??"").toLowerCase()).join(" ");
+    if(text.includes(q)) matches.push(i);
+    if(matches.length>=50)break;
+  }
+  $("dataStatus").textContent=`${matches.length}${matches.length===50?"+":""} result(s)`;
+  matches.forEach(i=>{
+    const r=rows[i], d=document.createElement("div");d.className="result";
+    const left=document.createElement("div");left.innerHTML=`<div class="song"></div><div class="artist"></div>`;
+    left.querySelector(".song").textContent=r[0]||"(No title)";
+    left.querySelector(".artist").textContent=(r[2]||"")+(r[1]?" • "+r[1]:"");
+    const badge=document.createElement("span");badge.className="badge "+(isClassified(r)?"":"new");badge.textContent=isClassified(r)?"✓ Classified":"○ Not classified";
+    d.append(left,badge);d.addEventListener("click",()=>selectSong(i));results.appendChild(d);
+  });
+}
+function selectSong(i){
+  selectedIndex=i; const r=rows[i];
+  $("editor").classList.remove("hidden");
+  $("songTitle").textContent=r[0]||"(No title)";$("songArtist").textContent=r[2]||"";$("songAlbum").textContent=r[1]||"";
+  $("classifiedBadge").classList.toggle("hidden",!isClassified(r));
+  $("genreInput").value=r[headers.indexOf("Genres")]??"";
+  ["Energy","Mood","Setting","Sleep"].forEach(h=>{const idx=headers.indexOf(h);$(h.toLowerCase()).value=idx>=0?(r[idx]??""):""});
+  const box=$("playlists");
+  playlistHeaders.forEach((name,k)=>{
+    const idx=headers.indexOf(name), val=String(r[idx]??"").trim().toLowerCase();
+    const buttons=box.children[k].querySelectorAll(".light");buttons.forEach(b=>b.classList.toggle("selected",b.dataset.color.toLowerCase()===val));
+  });
+  $("saveMsg").textContent="";
+  $("editor").scrollIntoView({behavior:"smooth",block:"start"});
+}
+function cancel(){selectedIndex=null;$("editor").classList.add("hidden")}
+async function updateCell(rowIndex,colIndex,value){
+  const addr=cellAddress(rowIndex,colIndex);
+  const base="/me/drive/root:/"+escapePath(CONFIG.workbookPath)+":/workbook/worksheets/"+encodeURIComponent(sheetName)+"/range(address='"+addr+"')";
+  await graph(base,{method:"PATCH",body:JSON.stringify({values:[[value]]})});
+}
+async function updateFill(rowIndex,colIndex,color){
+  const addr=cellAddress(rowIndex,colIndex);
+  const base="/me/drive/root:/"+escapePath(CONFIG.workbookPath)+":/workbook/worksheets/"+encodeURIComponent(sheetName)+"/range(address='"+addr+"')/format/fill";
+  if(color) await graph(base,{method:"PATCH",body:JSON.stringify({color:COLORS[color]})});
+  else await graph(base+"/clear",{method:"POST",body:"{}"});
+}
+async function save(){
+  if(selectedIndex===null)return;
+  $("saveBtn").disabled=true;msg($("saveMsg"),"Saving...");
+  try{
+    const r=rows[selectedIndex];
+    const updates=[];
+    const simple={Genres:$("genreInput").value.trim(),Energy:$("energy").value,Mood:$("mood").value,Setting:$("setting").value,Sleep:$("sleep").value};
+    for(const [h,v] of Object.entries(simple)){const c=headers.indexOf(h);if(c>=0)updates.push(updateCell(selectedIndex,c,v))}
+    playlistHeaders.forEach((name,k)=>{
+      const c=headers.indexOf(name), selected=$("playlists").children[k].querySelector(".light.selected");
+      const val=selected?selected.dataset.color:"";
+      updates.push(updateCell(selectedIndex,c,val),updateFill(selectedIndex,c,val?val:null));
+    });
+    await Promise.all(updates);
+    rows[selectedIndex]=[...r];
+    for(const [h,v] of Object.entries(simple)) rows[selectedIndex][headers.indexOf(h)]=v;
+    playlistHeaders.forEach((name,k)=>{const c=headers.indexOf(name), selected=$("playlists").children[k].querySelector(".light.selected");rows[selectedIndex][c]=selected?selected.dataset.color:""});
+    $("classifiedBadge").classList.remove("hidden");
+    msg($("saveMsg"),"✓ Saved directly to OneDrive / Music / Playlists.xlsx","ok");
+  }catch(e){console.error(e);msg($("saveMsg"),"Save failed: "+e.message,"err")}
+  $("saveBtn").disabled=false;
+}
+async function start(){
+  if(CONFIG.clientId.includes("PASTE_")){msg($("loginMsg"),"The app still needs your Microsoft App Client ID. Follow the setup steps I gave you.","err");return}
+  try{
+    msalApp=await PublicClientApplication.createPublicClientApplication({auth:{clientId:CONFIG.clientId,authority:CONFIG.authority,redirectUri:window.location.origin+window.location.pathname}});
+    const result=await msalApp.handleRedirectPromise();
+    account=result?.account||msalApp.getAllAccounts()[0];
+    if(!account){const r=await msalApp.loginPopup({scopes:CONFIG.scopes});account=r.account}
+    $("login").classList.add("hidden");$("app").classList.remove("hidden");$("accountText").textContent=account.username||"Signed in";
+    await loadWorkbook();
+  }catch(e){console.error(e);$("login").classList.remove("hidden");msg($("loginMsg"),"Could not connect: "+e.message,"err")}
+}
+$("loginBtn").onclick=start;
+$("searchBtn").onclick=search;
+$("searchInput").addEventListener("input",search);
+$("saveBtn").onclick=save;$("cancelBtn").onclick=cancel;
+$("reloadBtn").onclick=async()=>{try{await loadWorkbook();msg($("saveMsg"),"Reloaded workbook.","ok")}catch(e){msg($("saveMsg"),e.message,"err")}};
+$("logoutBtn").onclick=async()=>{await msalApp.logoutPopup({account});location.reload()};
+start();
+</script>
+</body>
+</html>
