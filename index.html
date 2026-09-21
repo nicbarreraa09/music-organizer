@@ -233,7 +233,8 @@ async function save(){
 async function start(){
   if(CONFIG.clientId.includes("PASTE_")){msg($("loginMsg"),"The app still needs your Microsoft App Client ID. Follow the setup steps I gave you.","err");return}
   try{
-    msalApp=await PublicClientApplication.createPublicClientApplication({auth:{clientId:CONFIG.clientId,authority:CONFIG.authority,redirectUri:window.location.origin+window.location.pathname}});
+    msalApp = new PublicClientApplication({auth:{clientId:CONFIG.clientId,authority:CONFIG.authority,redirectUri:window.location.origin+window.location.pathname}});
+      await msalApp.initialize();
     const result=await msalApp.handleRedirectPromise();
     account=result?.account||msalApp.getAllAccounts()[0];
     if(!account){const r=await msalApp.loginPopup({scopes:CONFIG.scopes});account=r.account}
