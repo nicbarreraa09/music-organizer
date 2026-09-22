@@ -231,16 +231,52 @@ async function save(){
   $("saveBtn").disabled=false;
 }
 async function start(){
-  if(CONFIG.clientId.includes("PASTE_")){msg($("loginMsg"),"The app still needs your Microsoft App Client ID. Follow the setup steps I gave you.","err");return}
+  if(CONFIG.clientId.includes("PASTE_")){
+    msg(
+      $("loginMsg"),
+      "The app still needs your Microsoft App Client ID.",
+      "err"
+    );
+    return;
+  }
+
   try{
-    msalApp = new PublicClientApplication({auth:{clientId:CONFIG.clientId,authority:CONFIG.authority,redirectUri:window.location.origin+window.location.pathname}});
-      await msalApp.initialize();
-    const result=await msalApp.handleRedirectPromise();
-    account=result?.account||msalApp.getAllAccounts()[0];
-    if(!account){const r=await msalApp.loginPopup({scopes:CONFIG.scopes});account=r.account}
-    $("login").classList.add("hidden");$("app").classList.remove("hidden");$("accountText").textContent=account.username||"Signed in";
+    msalApp = new PublicClientApplication({
+      auth:{
+        clientId:CONFIG.clientId,
+        authority:CONFIG.authority,
+        redirectUri:"https://nicbarreraa09.github.io/music-organizer/"
+      }
+    });
+
+    await msalApp.initialize();
+
+    const result = await msalApp.handleRedirectPromise();
+
+    account = result?.account || msalApp.getAllAccounts()[0];
+
+    if(!account){
+      await msalApp.loginRedirect({
+        scopes: CONFIG.scopes
+      });
+      return;
+    }
+
+    $("login").classList.add("hidden");
+    $("app").classList.remove("hidden");
+    $("accountText").textContent = account.username || "Signed in";
+
     await loadWorkbook();
-  }catch(e){console.error(e);$("login").classList.remove("hidden");msg($("loginMsg"),"Could not connect: "+e.message,"err")}
+
+  }catch(e){
+    console.error(e);
+    $("login").classList.remove("hidden");
+    msg(
+      $("loginMsg"),
+      "Could not connect: " + e.message,
+      "err"
+    );
+  }
 }
 $("loginBtn").onclick=start;
 $("searchBtn").onclick=search;
